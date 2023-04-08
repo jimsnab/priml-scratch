@@ -38,13 +38,14 @@ object Log
 impl Log
 {
     // how to do constructor?
-    func singleStream(Stream stream)
+    // this would be cool - if ctor specified, at least is required in object instantiation
+    ctor singleStream(Stream stream)
     {
         this.chattyStream = stream
         this.urgentStream = stream
     }
 
-    func twoStreams(Stream chattyStream, Stream urgentStream)
+    ctor twoStreams(Stream chattyStream, Stream urgentStream)
     {
         this.chattyStream = chattyStream
         this.urgentStream = urgentStream
