@@ -38,7 +38,7 @@ object Log
 impl Log
 {
     // how to do constructor?
-    // this would be cool - if ctor specified, at least one is required in object instantiation
+    // this would be cool - if ctor specified, one is required in object instantiation
     // I hate overloads and default parameters - loses traceability in the source code
     ctor singleStream(Stream stream)
     {
