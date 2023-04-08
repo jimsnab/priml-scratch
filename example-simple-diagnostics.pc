@@ -10,7 +10,7 @@ func _logHeader() -> string
 
 func _logFormat(string formatStr, ...) -> string
 {
-    return sprintf(logHeader, " ", vsprintf(formatStr, ...))
+    return sprint(_logHeader(), " ", vsprintf(formatStr, ...))
 }
 
 func _log(Stream stream, string level, ...)
