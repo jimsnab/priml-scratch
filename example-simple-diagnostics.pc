@@ -90,7 +90,7 @@ impl Log
     }
 }
 
-var log = new Log().singleStream(Stream.stdout)
+var log = new Log.singleStream(Stream.stdout)
 
 func server()
 {
