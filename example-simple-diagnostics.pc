@@ -38,17 +38,23 @@ object Log
 impl Log
 {
     // how to do constructor?
-    // this would be cool - if ctor specified, at least is required in object instantiation
+    // this would be cool - if ctor specified, at least one is required in object instantiation
+    // I hate overloads and default parameters - loses traceability in the source code
     ctor singleStream(Stream stream)
     {
-        this.chattyStream = stream
-        this.urgentStream = stream
+        this.twoStreams(stream, stream)
     }
 
     ctor twoStreams(Stream chattyStream, Stream urgentStream)
     {
         this.chattyStream = chattyStream
         this.urgentStream = urgentStream
+    }
+
+    dtor
+    {
+        this.chattyStream.flush()
+        this.urgentStream.flush()
     }
 
     func info(...)
