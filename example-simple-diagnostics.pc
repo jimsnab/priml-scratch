@@ -1,0 +1,129 @@
+// it would be nice if _log* functions were integrated into the language for consistency
+func _logHeader() -> string
+{
+    var t = new Time().gmt()
+
+    // take the last 6 characters of the lane (a uuid)
+    var shortId = substring(lane, -6)
+    return sprintf("%s %s", t.shortDateTime(), shortId)
+}
+
+func _logFormat(string formatStr, ...) -> string
+{
+    return sprintf(logHeader, " ", vsprintf(formatStr, ...))
+}
+
+func _log(Stream stream, string level, ...)
+{
+    // is there a way to determine the length of the vargs?
+    if (arglength(...) > 0)
+    {
+        fprint(stream, " ", level, " ", ...)
+        fprint(stream, "\n")
+    }
+}
+
+func _logf(Stream stream, string level, string formatStr, ...)
+{
+    fprint(stream, _logHeader(), " ", level, " ", _logFormat(formatStr, ...), "\n")
+}
+
+// I love separation of state from methods
+object Log
+{
+    Stream chattyStream
+    Stream urgentStream
+}
+
+impl Log
+{
+    // how to do constructor?
+    func singleStream(Stream stream)
+    {
+        this.chattyStream = stream
+        this.urgentStream = stream
+    }
+
+    func twoStreams(Stream chattyStream, Stream urgentStream)
+    {
+        this.chattyStream = chattyStream
+        this.urgentStream = urgentStream
+    }
+
+    func info(...)
+    {
+        _log(this.chattyStream, "INFO", ...)
+    }
+
+    func infof(string formatStr, ...)
+    {
+        _logf(this.chattyStream, "INFO", formatStr, ...)
+    }
+
+    func warn(...)
+    {
+        _log(this.urgentStream, "WARN", ...)
+    }
+
+    func warnf(string formatStr, ...)
+    {
+        _logf(this.urgentStream, "WARN", formatStr, ...)
+    }
+
+    func error(Error error, ...)
+    {
+        _log(this.urgentStream, "ERROR", ...)
+        _log(this.urgentStream, "STACK", error.stack())   // imagined way to get the call stack as a string 
+    }
+
+    func errorf(Error error, string formatStr, ...)
+    {
+        _logf(this.urgentStream, "ERROR", formatStr, ...)
+        _log(this.urgentStream, "STACK", error.stack())
+    }
+}
+
+var log = new Log().singleStream(Stream.stdout)
+
+func server()
+{
+    var s = new Socket()
+    s.listen()
+    loop
+    {
+        var client = s.accept()
+
+        // imagined syntax for spawing a thread
+        spawn acceptConnection(cxn)
+    }
+}
+
+func acceptConnection(Socket cxn)
+{
+    // new thread - want a new uuid & context
+    lane++
+    log.infof("connected: %s", cxn.networkAddress)
+
+    // some imagined state machine creation
+    var service = state::transactionStream
+    loop
+    {
+        // imagined syntax for hooking a transition event
+        upon service => next(cxn) 
+        {
+            txnReady -> txn:
+            {
+                log.info("parsed ", txn)
+            }
+
+            quit -> err:
+            {
+                if (err != null)
+                {
+                    log.error(err)
+                }
+                log("connection terminated")
+            }
+        }            
+    }
+}
