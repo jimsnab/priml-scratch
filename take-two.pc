@@ -109,7 +109,7 @@ impl Log
         this.urgentStream.flush()
     }
 
-    func @debug debug(...)
+    func @build:debug debug(...)
     {
         if (_filter(filter))
         {
@@ -117,14 +117,14 @@ impl Log
         }
     }
 
-    func @all debug(...) nothing
+    func debug(...) nothing
 
-    func @debug debugf(string formatStr, ...)
+    func @build:debug debugf(string formatStr, ...)
     {
         _logf(this.chattyStream, "DEBUG", formatStr, ...)
     }
 
-    func @all debugf(string formatStr, ...) nothing 
+    func debugf(string formatStr, ...) nothing 
 
     func info(...)
     {
