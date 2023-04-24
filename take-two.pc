@@ -1,0 +1,205 @@
+/*
+1. Statements that apply to a specific kind of build
+
+@operator
+    There needs to be some "pragma" like syntax, so I chose @
+    
+    @ <key>:<value> [,<key2>:<value2> ...]
+
+    Apply at file scope and function scope
+
+    Also support a concept of "nothing" for a stub function. This should
+    be evaluated for compilation but result in no compilation unit. That
+    way expressions within the arg position (such as string formatting)
+    don't get included, but must be valid as a sake of hygene.
+
+    func myFunc(string arg) nothing
+
+    Now a function can be targeted for a specific kind of build, and a
+    function that has no return value can be excluded from unintended builds.
+
+    func @build:debug myFunc(string arg) { ... do something only in a debug build ... }
+    func myFunc(string arg) { ... }
+
+    A specific implementation has precidence over non-specific implementation.
+
+    Apply at file scope for scenarios like architecture or os flavors.
+
+    @os:linux,architecture:arm
+
+2. Log filtering
+
+    Added a contructor... more to do here.
+    
+    I want to use the lane context and I need a nice way to specify keywords
+    that get placed into the context.
+
+3. Correlation ID - lane syntax probably can be refined
+4. Parent Correlation IDs - shouldn't be hard, just need a parent syntax
+*/
+
+object Log
+{
+    Stream chattyStream
+    Stream urgentStream
+    string filter
+}
+
+// it would be nice if _log* functions were integrated into the language for consistency
+func _logHeader() -> string
+{
+    var t = new Time().gmt()
+
+    // take the last 6 characters of the lane (a uuid)
+    var shortId = substring(lane, -6)
+    return sprintf("%s %s", t.shortDateTime(), shortId)
+}
+
+func _logFormat(string formatStr, ...) -> string
+{
+    return sprint(_logHeader(), " ", vsprintf(formatStr, ...))
+}
+
+func _log(Stream stream, string level, ...)
+{
+    // is there a way to determine the length of the vargs?
+    if (arglength(...) > 0)
+    {
+        fprint(stream, " ", level, " ", ...)
+        fprint(stream, "\n")
+    }
+}
+
+func _logf(Stream stream, string level, string formatStr, ...)
+{
+    fprint(stream, _logHeader(), " ", level, " ", _logFormat(formatStr, ...), "\n")
+}
+
+
+func _filter(string filter)
+{
+    // need to figure this out still
+}
+
+impl Log
+{
+    // how to do constructor?
+    // this would be cool - if ctor specified, one is required in object instantiation
+    // I hate overloads and default parameters - loses traceability in the source code
+    ctor singleStream(Stream stream)
+    {
+        this.twoStreams(stream, stream)
+    }
+
+    ctor twoStreams(Stream chattyStream, Stream urgentStream)
+    {
+        this.chattyStream = chattyStream
+        this.urgentStream = urgentStream
+    }
+
+    ctor filteredStream(Stream stream, string filter)
+    {
+        this.twoStreams(stream, stream)
+        this.filter = filter
+    }
+
+    dtor
+    {
+        this.chattyStream.flush()
+        this.urgentStream.flush()
+    }
+
+    func @debug debug(...)
+    {
+        if (_filter(filter))
+        {
+            _log(this.chattyStream, "DEBUG", ...)
+        }
+    }
+
+    func @all debug(...) nothing
+
+    func @debug debugf(string formatStr, ...)
+    {
+        _logf(this.chattyStream, "DEBUG", formatStr, ...)
+    }
+
+    func @all debugf(string formatStr, ...) nothing 
+
+    func info(...)
+    {
+        _log(this.chattyStream, "INFO", ...)
+    }
+
+    func infof(string formatStr, ...)
+    {
+        _logf(this.chattyStream, "INFO", formatStr, ...)
+    }
+
+    func warn(...)
+    {
+        _log(this.urgentStream, "WARN", ...)
+    }
+
+    func warnf(string formatStr, ...)
+    {
+        _logf(this.urgentStream, "WARN", formatStr, ...)
+    }
+
+    func error(Error error, ...)
+    {
+        _log(this.urgentStream, "ERROR", ...)
+        _log(this.urgentStream, "STACK", error.stack())   // imagined way to get the call stack as a string 
+    }
+
+    func errorf(Error error, string formatStr, ...)
+    {
+        _logf(this.urgentStream, "ERROR", formatStr, ...)
+        _log(this.urgentStream, "STACK", error.stack())
+    }
+}
+
+func server()
+{
+    var s = new Socket()
+    s.listen()
+    loop
+    {
+        var client = s.accept()
+
+        // imagined syntax for spawing a thread
+        spawn acceptConnection(cxn)
+    }
+
+}
+
+func acceptConnection(Socket cxn)
+{ ##id
+    // new thread - want a new uuid & context
+    
+    log.infof("connected: %s", cxn.networkAddress)
+
+    // some imagined state machine creation
+    var service = state::transactionStream
+    loop
+    {
+        // imagined syntax for hooking a transition event
+        upon service => next(cxn) 
+        {
+            txnReady -> txn:
+            {
+                log.info("parsed ", txn)
+            }
+
+            quit -> err:
+            {
+                if (err != null)
+                {
+                    log.error(err)
+                }
+                log("connection terminated")
+            }
+        }            
+    }
+}
+
